@@ -2,18 +2,25 @@
 
 This repo is the pytorch implementation of the following paper:
 
-
-
 Adversarial Learning for Semi-supervised Semantic Segmentation <br/>
-Wei-Chih Hung, Yi-Hsuan Tsai, Yan-Ting Liou, Yen-Yu Lin, and Ming-Hsuan Yang <br/>
+[Wei-Chih Hung](https://hfslyc.github.io/), [Yi-Hsuan Tsai](https://sites.google.com/site/yihsuantsai/home), Yan-Ting Liou, [Yen-Yu Lin](https://www.citi.sinica.edu.tw/pages/yylin/), and [Ming-Hsuan Yang](http://faculty.ucmerced.edu/mhyang/) <br/>
 [[Arxiv]]()
-[[OpenReview]](https://openreview.net/forum?id=SkzO78yAb)
 
 Contact: Wei-Chih Hung (whung8 at ucmerced dot edu)
 
 ![](figs/semi_overview.jpg)
 
 The code are heavily borrowed from a pytorch DeepLab implementation ([Link](https://github.com/speedinghzl/Pytorch-Deeplab)). The baseline model is DeepLabv2-Resnet101 without multiscale training and CRF post processing, which yields meanIOU ``73.6%`` on the VOC2012 validation set. 
+
+Please cite our paper if you find it useful for your research.
+```
+@article{Hung_semiseg_2018,
+  author = {W.-C. Hung and Y.-H. Tsai and Y.-T. Liou and Y.-Y. Lin and M.-H. Yang},
+  journal = {arXiv preprint arXiv:xxxx.xxxxx},
+  title = {Learning to Adapt Structured Output Space for Semantic Segmentation},
+  year = {2018}
+}
+```
 
 ## Prerequisite
 
