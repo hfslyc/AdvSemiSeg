@@ -50,7 +50,7 @@ python evaluate_voc.py --pretrained-model semi0.125 --save-dir results
 
 It will download the pretrained model with 1/8 training data and evaluate on the VOC2012 val set. The colorized images will be saved in ``results/`` and the detailed class IOU will be saved in ``results/result.txt``. The mean IOU should be around ``68.8%``.
 
-* Available ``--pretrained-model`` options: ``semi0.125``, ``semi0.25``, ``semi0.5``. 
+* Available ``--pretrained-model`` options: ``semi0.125``, ``semi0.25``, ``semi0.5`` , ``advFull``. 
 
 ## Example visualization results
 
