@@ -1,0 +1,16 @@
+# models
+model/*.pth
+
+# pyc
+*.pyc
+deeplab/*.pyc
+
+snapshots/
+snapshot*
+result*
+*.swp
+*.log
+
+# dataset
+dataset/VOC2012
+
