@@ -2,7 +2,7 @@
 
 This repo is the pytorch implementation of the following paper:
 
-[Adversarial Learning for Semi-supervised Semantic Segmentation]() <br/>
+[Adversarial Learning for Semi-supervised Semantic Segmentation](https://arxiv.org/abs/1802.07934) <br/>
 [Wei-Chih Hung](https://hfslyc.github.io/), [Yi-Hsuan Tsai](https://sites.google.com/site/yihsuantsai/home), Yan-Ting Liou, [Yen-Yu Lin](https://www.citi.sinica.edu.tw/pages/yylin/), and [Ming-Hsuan Yang](http://faculty.ucmerced.edu/mhyang/) <br/>
 
 Contact: Wei-Chih Hung (whung8 at ucmerced dot edu)
@@ -15,7 +15,7 @@ Please cite our paper if you find it useful for your research.
 ```
 @article{Hung_semiseg_2018,
   author = {W.-C. Hung and Y.-H. Tsai and Y.-T. Liou and Y.-Y. Lin and M.-H. Yang},
-  journal = {arXiv preprint arXiv:xxxx.xxxxx},
+  journal = {arXiv preprint arXiv:1802.07934},
   title = {Adversarial Learning for Semi-supervised Semantic Segmentation},
   year = {2018}
 }
