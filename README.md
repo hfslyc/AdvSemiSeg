@@ -13,9 +13,9 @@ The code are heavily borrowed from a pytorch DeepLab implementation ([Link](http
 
 Please cite our paper if you find it useful for your research.
 ```
-@article{Hung_semiseg_2018,
+@inproceedings{Hung_semiseg_2018,
   author = {W.-C. Hung and Y.-H. Tsai and Y.-T. Liou and Y.-Y. Lin and M.-H. Yang},
-  journal = {arXiv preprint arXiv:1802.07934},
+  booktitle = {Proceedings of the British Machine Vision Conference (BMVC)},
   title = {Adversarial Learning for Semi-supervised Semantic Segmentation},
   year = {2018}
 }
@@ -24,7 +24,7 @@ Please cite our paper if you find it useful for your research.
 ## Prerequisite
 
 * CUDA/CUDNN
-* pytorch >= 0.2
+* pytorch >= 0.2 (We only support 0.4 for evaluation. Will migrate the code to 0.4 soon.)
 * python-opencv >=3.4.0 (3.3 will cause extra GPU memory on multithread data loader)
 
 
@@ -76,4 +76,6 @@ python evaluate_voc.py --restore-from snapshots/VOC_20000.pth \
                        --save-dir results
 ```
 
+## Changelog
 
+* 07/24/2018: Update BMVC results
