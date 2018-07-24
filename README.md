@@ -4,6 +4,7 @@ This repo is the pytorch implementation of the following paper:
 
 [Adversarial Learning for Semi-supervised Semantic Segmentation](https://arxiv.org/abs/1802.07934) <br/>
 [Wei-Chih Hung](https://hfslyc.github.io/), [Yi-Hsuan Tsai](https://sites.google.com/site/yihsuantsai/home), Yan-Ting Liou, [Yen-Yu Lin](https://www.citi.sinica.edu.tw/pages/yylin/), and [Ming-Hsuan Yang](http://faculty.ucmerced.edu/mhyang/) <br/>
+Proceedings of the British Machine Vision Conference (BMVC), 2018.
 
 Contact: Wei-Chih Hung (whung8 at ucmerced dot edu)
 
