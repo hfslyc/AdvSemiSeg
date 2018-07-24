@@ -14,7 +14,7 @@ import sys
 import os
 import os.path as osp
 import pickle
-
+from packaging import version
 
 from model.deeplab import Res_Deeplab
 from model.discriminator import FCDiscriminator
@@ -59,6 +59,10 @@ SEMI_START=5000
 LAMBDA_SEMI=0.1
 MASK_T=0.2
 
+LAMBDA_SEMI_ADV=0.001
+SEMI_START_ADV=0
+D_REMAIN=True
+
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -97,10 +101,16 @@ def get_arguments():
                         help="lambda_adv for adversarial training.")
     parser.add_argument("--lambda-semi", type=float, default=LAMBDA_SEMI,
                         help="lambda_semi for adversarial training.")
+    parser.add_argument("--lambda-semi-adv", type=float, default=LAMBDA_SEMI_ADV,
+                        help="lambda_semi for adversarial training.")
     parser.add_argument("--mask-T", type=float, default=MASK_T,
                         help="mask T for semi adversarial training.")
     parser.add_argument("--semi-start", type=int, default=SEMI_START,
                         help="start semi learning after # iterations")
+    parser.add_argument("--semi-start-adv", type=int, default=SEMI_START_ADV,
+                        help="start semi learning after # iterations")
+    parser.add_argument("--D-remain", type=bool, default=D_REMAIN,
+                        help="Whether to train D with unlabeled data")
     parser.add_argument("--momentum", type=float, default=MOMENTUM,
                         help="Momentum component of the optimiser.")
     parser.add_argument("--not-restore-last", action="store_true",
@@ -241,14 +251,14 @@ def main():
     else:
         #sample partial data
         partial_size = int(args.partial_data * train_dataset_size)
-        
+
         if args.partial_id is not None:
             train_ids = pickle.load(open(args.partial_id))
             print('loading train ids from {}'.format(args.partial_id))
         else:
             train_ids = range(train_dataset_size)
             np.random.shuffle(train_ids)
-        
+
         pickle.dump(train_ids, open(osp.join(args.snapshot_dir, 'train_id.pkl'), 'wb'))
 
         train_sampler = data.sampler.SubsetRandomSampler(train_ids[:partial_size])
@@ -284,6 +294,11 @@ def main():
     bce_loss = BCEWithLogitsLoss2d()
     interp = nn.Upsample(size=(input_size[1], input_size[0]), mode='bilinear')
 
+    if version.parse(torch.__version__) >= version.parse('0.4.0'):
+        interp = nn.Upsample(size=(input_size[1], input_size[0]), mode='bilinear', align_corners=True)
+    else:
+        interp = nn.Upsample(size=(input_size[1], input_size[0]), mode='bilinear')
+
 
     # labels for adversarial training
     pred_label = 0
@@ -296,6 +311,7 @@ def main():
         loss_adv_pred_value = 0
         loss_D_value = 0
         loss_semi_value = 0
+        loss_semi_adv_value = 0
 
         optimizer.zero_grad()
         adjust_learning_rate(optimizer, i_iter)
@@ -311,7 +327,7 @@ def main():
                 param.requires_grad = False
 
             # do semi first
-            if args.lambda_semi > 0 and i_iter >= args.semi_start :
+            if (args.lambda_semi > 0 or args.lambda_semi_adv > 0 ) and i_iter >= args.semi_start_adv :
                 try:
                     _, batch = trainloader_remain_iter.next()
                 except:
@@ -324,30 +340,46 @@ def main():
 
 
                 pred = interp(model(images))
-                D_out = interp(model_D(F.softmax(pred)))
+                pred_remain = pred.detach()
 
+                D_out = interp(model_D(F.softmax(pred)))
                 D_out_sigmoid = F.sigmoid(D_out).data.cpu().numpy().squeeze(axis=1)
 
-                # produce ignore mask
-                semi_ignore_mask = (D_out_sigmoid < args.mask_T)
+                ignore_mask_remain = np.zeros(D_out_sigmoid.shape).astype(np.bool)
 
-                semi_gt = pred.data.cpu().numpy().argmax(axis=1)
-                semi_gt[semi_ignore_mask] = 255
+                loss_semi_adv = args.lambda_semi_adv * bce_loss(D_out, make_D_label(gt_label, ignore_mask_remain))
+                loss_semi_adv = loss_semi_adv/args.iter_size
 
-                semi_ratio = 1.0 - float(semi_ignore_mask.sum())/semi_ignore_mask.size
-                print('semi ratio: {:.4f}'.format(semi_ratio))
+                #loss_semi_adv.backward()
+                loss_semi_adv_value += loss_semi_adv.data.cpu().numpy()[0]/args.lambda_semi_adv
 
-                if semi_ratio == 0.0:
-                    loss_semi_value += 0
+                if args.lambda_semi <= 0 or i_iter < args.semi_start:
+                    loss_semi_adv.backward()
+                    loss_semi_value = 0
                 else:
-                    semi_gt = torch.FloatTensor(semi_gt)
+                    # produce ignore mask
+                    semi_ignore_mask = (D_out_sigmoid < args.mask_T)
 
-                    loss_semi = args.lambda_semi * loss_calc(pred, semi_gt, args.gpu)
-                    loss_semi = loss_semi/args.iter_size
-                    loss_semi.backward()
-                    loss_semi_value += loss_semi.data.cpu().numpy()[0]/args.lambda_semi
+                    semi_gt = pred.data.cpu().numpy().argmax(axis=1)
+                    semi_gt[semi_ignore_mask] = 255
+
+                    semi_ratio = 1.0 - float(semi_ignore_mask.sum())/semi_ignore_mask.size
+                    print('semi ratio: {:.4f}'.format(semi_ratio))
+
+                    if semi_ratio == 0.0:
+                        loss_semi_value += 0
+                    else:
+                        semi_gt = torch.FloatTensor(semi_gt)
+
+                        loss_semi = args.lambda_semi * loss_calc(pred, semi_gt, args.gpu)
+                        loss_semi = loss_semi/args.iter_size
+                        loss_semi_value += loss_semi.data.cpu().numpy()[0]/args.lambda_semi
+                        loss_semi += loss_semi_adv
+                        loss_semi.backward()
+
             else:
                 loss_semi = None
+                loss_semi_adv = None
 
             # train with source
 
@@ -386,6 +418,10 @@ def main():
             # train with pred
             pred = pred.detach()
 
+            if args.D_remain:
+                pred = torch.cat((pred, pred_remain), 0)
+                ignore_mask = np.concatenate((ignore_mask,ignore_mask_remain), axis = 0)
+
             D_out = interp(model_D(F.softmax(pred)))
             loss_D = bce_loss(D_out, make_D_label(pred_label, ignore_mask))
             loss_D = loss_D/args.iter_size/2
@@ -417,7 +453,7 @@ def main():
         optimizer_D.step()
 
         print('exp = {}'.format(args.snapshot_dir))
-        print('iter = {0:8d}/{1:8d}, loss_seg = {2:.3f}, loss_adv_p = {3:.3f}, loss_D = {4:.3f}, loss_semi = {5:.3f}'.format(i_iter, args.num_steps, loss_seg_value, loss_adv_pred_value, loss_D_value, loss_semi_value))
+        print('iter = {0:8d}/{1:8d}, loss_seg = {2:.3f}, loss_adv_p = {3:.3f}, loss_D = {4:.3f}, loss_semi = {5:.3f}, loss_semi_adv = {6:.3f}'.format(i_iter, args.num_steps, loss_seg_value, loss_adv_pred_value, loss_D_value, loss_semi_value, loss_semi_adv_value))
 
         if i_iter >= args.num_steps-1:
             print 'save model ...'

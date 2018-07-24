@@ -6,6 +6,7 @@ import numpy as np
 import sys
 from collections import OrderedDict
 import os
+from packaging import version
 
 import torch
 import torch.nn as nn
@@ -34,15 +35,15 @@ PRETRAINED_MODEL = None
 SAVE_DIRECTORY = 'results'
 
 
-pretrianed_models_dict ={'semi0.125': 'http://vllab1.ucmerced.edu/~whung/adv-semi-seg/AdvSemiSegVOC0.125-8d75b3f1.pth',
-                         'semi0.25': 'http://vllab1.ucmerced.edu/~whung/adv-semi-seg/AdvSemiSegVOC0.25-ed367c57.pth',
-                         'semi0.5': 'http://vllab1.ucmerced.edu/~whung/adv-semi-seg/AdvSemiSegVOC0.5-6e496cf3.pth',
+pretrianed_models_dict ={'semi0.125': 'http://vllab1.ucmerced.edu/~whung/adv-semi-seg/AdvSemiSegVOC0.125-03c6f81c.pth',
+                         'semi0.25': 'http://vllab1.ucmerced.edu/~whung/adv-semi-seg/AdvSemiSegVOC0.25-473f8a14.pth',
+                         'semi0.5': 'http://vllab1.ucmerced.edu/~whung/adv-semi-seg/AdvSemiSegVOC0.5-acf6a654.pth',
                          'advFull': 'http://vllab1.ucmerced.edu/~whung/adv-semi-seg/AdvSegVOCFull-92fbc7ee.pth'}
 
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
-    
+
     Returns:
       A list of parsed arguments.
     """
@@ -111,16 +112,16 @@ def color_map(N=256, normalized=False):
 
 
 def get_iou(data_list, class_num, save_path=None):
-    from multiprocessing import Pool 
+    from multiprocessing import Pool
     from utils.metric import ConfusionMatrix
 
     ConfM = ConfusionMatrix(class_num)
     f = ConfM.generateM
-    pool = Pool() 
+    pool = Pool()
     m_list = pool.map(f, data_list)
-    pool.close() 
-    pool.join() 
-    
+    pool.close()
+    pool.join()
+
     for m in m_list:
         ConfM.addM(m)
 
@@ -136,7 +137,7 @@ def get_iou(data_list, class_num, save_path=None):
     for i, iou in enumerate(j_list):
         print('class {:2d} {:12} IU {:.2f}'.format(i, classes[i], j_list[i]))
 
-    
+
     print('meanIOU: ' + str(aveJ) + '\n')
     if save_path:
         with open(save_path, 'w') as f:
@@ -158,9 +159,9 @@ def show_all(gt, pred):
                          'cow', 'diningtable', 'dog', 'horse',
                          'motorbike', 'person', 'pottedplant',
                          'sheep', 'sofa', 'train', 'tvmonitor'))
-    colormap = [(0,0,0),(0.5,0,0),(0,0.5,0),(0.5,0.5,0),(0,0,0.5),(0.5,0,0.5),(0,0.5,0.5), 
-                    (0.5,0.5,0.5),(0.25,0,0),(0.75,0,0),(0.25,0.5,0),(0.75,0.5,0),(0.25,0,0.5), 
-                    (0.75,0,0.5),(0.25,0.5,0.5),(0.75,0.5,0.5),(0,0.25,0),(0.5,0.25,0),(0,0.75,0), 
+    colormap = [(0,0,0),(0.5,0,0),(0,0.5,0),(0.5,0.5,0),(0,0,0.5),(0.5,0,0.5),(0,0.5,0.5),
+                    (0.5,0.5,0.5),(0.25,0,0),(0.75,0,0),(0.25,0.5,0),(0.75,0.5,0),(0.25,0,0.5),
+                    (0.75,0,0.5),(0.25,0.5,0.5),(0.75,0.5,0.5),(0,0.25,0),(0.5,0.25,0),(0,0.75,0),
                     (0.5,0.75,0),(0,0.25,0.5)]
     cmap = colors.ListedColormap(colormap)
     bounds=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21]
@@ -183,7 +184,7 @@ def main():
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
 
-    
+
     model = Res_Deeplab(num_classes=args.num_classes)
 
     if args.pretrained_model != None:
@@ -198,10 +199,13 @@ def main():
     model.eval()
     model.cuda(gpu0)
 
-    testloader = data.DataLoader(VOCDataSet(args.data_dir, args.data_list, crop_size=(505, 505), mean=IMG_MEAN, scale=False, mirror=False), 
+    testloader = data.DataLoader(VOCDataSet(args.data_dir, args.data_list, crop_size=(505, 505), mean=IMG_MEAN, scale=False, mirror=False),
                                     batch_size=1, shuffle=False, pin_memory=True)
 
-    interp = nn.Upsample(size=(505, 505), mode='bilinear')
+    if version.parse(torch.__version__) >= version.parse('0.4.0'):
+        interp = nn.Upsample(size=(505, 505), mode='bilinear', align_corners=True)
+    else:
+        interp = nn.Upsample(size=(505, 505), mode='bilinear')
     data_list = []
 
     colorize = VOCColorize()
@@ -219,7 +223,7 @@ def main():
 
         output = output.transpose(1,2,0)
         output = np.asarray(np.argmax(output, axis=2), dtype=np.int)
-        
+
         filename = os.path.join(args.save_dir, '{}.png'.format(name[0]))
         color_file = Image.fromarray(colorize(output).transpose(1, 2, 0), 'RGB')
         color_file.save(filename)
